@@ -632,6 +632,30 @@ def jeste_plan_kolona(naziv):
     return "plan" in t
 
 
+def jeste_aida_masina(masina):
+    return norm(masina).startswith("aida")
+
+
+def jeste_plan_shift_stator_kolona(naziv):
+    """Za AIDA mašine: plan po smeni čita se samo iz Plan per SHIFT STATOR."""
+    t = norm(naziv)
+    return "plan" in t and "shift" in t and "stator" in t
+
+
+def jeste_plan_day_stator_kolona(naziv):
+    """Za AIDA mašine: ukupan dnevni plan čita se samo iz Plan per DAY STATOR."""
+    t = norm(naziv)
+    return "plan" in t and "day" in t and "stator" in t
+
+
+def jeste_stator_kolona(naziv):
+    return "stator" in norm(naziv)
+
+
+def jeste_realizacija_stator_kolona(naziv):
+    return jeste_stator_kolona(naziv) and jeste_realizacija_kolona(naziv)
+
+
 def jeste_realizacija_kolona(naziv):
     t = norm(naziv)
     if any(x in t for x in ["nok", "scrap", "plan", "stop", "stops", "opening", "target"]):
@@ -682,6 +706,19 @@ def ucitaj_excel(upload_bytes):
                 for sm in DOZVOLJENE_SMENE
             }
 
+            aida_masina = jeste_aida_masina(masina)
+            plan_dan_stator = 0.0
+
+            # Za AIDA mašine ukupan dnevni plan NE računamo sabiranjem svih plan kolona,
+            # nego ga čitamo samo iz kolone "Plan per DAY STATOR".
+            # Koristimo najveću pronađenu vrednost da se isti dnevni plan ne duplira ako se
+            # kolona ponavlja po smenama ili u više blokova.
+            if aida_masina:
+                for kolona_plan in range(1, zadnja_kolona + 1):
+                    naziv_plan = ws.cell(row=RED_NAZIVI, column=kolona_plan).value
+                    if naziv_plan is not None and jeste_plan_day_stator_kolona(naziv_plan):
+                        plan_dan_stator = max(plan_dan_stator, broj(ws.cell(row=red, column=kolona_plan).value))
+
             for kolona in range(1, zadnja_kolona + 1):
                 smena = smena_za_kolonu(ws, kolona)
                 if smena is None:
@@ -694,11 +731,20 @@ def ucitaj_excel(upload_bytes):
                 cell = ws.cell(row=red, column=kolona)
                 vrednost = broj(cell.value)
 
-                if jeste_plan_kolona(naziv):
-                    po_smeni[smena]["Plan"] += vrednost
+                if aida_masina:
+                    # Za AIDA mašine prikazujemo samo stator:
+                    # plan smene = Plan per SHIFT STATOR, realizacija = samo stator kolone.
+                    if jeste_plan_shift_stator_kolona(naziv):
+                        po_smeni[smena]["Plan"] += vrednost
 
-                if jeste_realizacija_kolona(naziv):
-                    po_smeni[smena]["Realizacija"] += vrednost
+                    if jeste_realizacija_stator_kolona(naziv):
+                        po_smeni[smena]["Realizacija"] += vrednost
+                else:
+                    if jeste_plan_kolona(naziv):
+                        po_smeni[smena]["Plan"] += vrednost
+
+                    if jeste_realizacija_kolona(naziv):
+                        po_smeni[smena]["Realizacija"] += vrednost
 
                 if jeste_stop_kolona(naziv):
                     po_smeni[smena]["Zastoj_min"] += vrednost
@@ -719,6 +765,8 @@ def ucitaj_excel(upload_bytes):
                                 "Originalna_stavka": stavka["Originalna_stavka"],
                             })
 
+            plan_dan = plan_dan_stator if aida_masina else sum(v["Plan"] for v in po_smeni.values())
+
             for smena, vrednosti in po_smeni.items():
                 plan = vrednosti["Plan"]
                 realizacija = vrednosti["Realizacija"]
@@ -730,6 +778,7 @@ def ucitaj_excel(upload_bytes):
                     "Smena": smena,
                     "Smena_prikaz": SMENA_LABEL.get(smena, smena),
                     "Plan": plan,
+                    "Plan_dan": plan_dan,
                     "Realizacija": realizacija,
                     "Realizacija_%": procenat(realizacija, plan),
                     "Zastoj_min": vrednosti["Zastoj_min"],
@@ -739,7 +788,7 @@ def ucitaj_excel(upload_bytes):
     df_zastoji = pd.DataFrame(zastoji)
 
     if not df.empty:
-        for kol in ["Plan", "Realizacija", "Zastoj_min"]:
+        for kol in ["Plan", "Plan_dan", "Realizacija", "Zastoj_min"]:
             df[kol] = pd.to_numeric(df[kol], errors="coerce").fillna(0)
 
     if not df_zastoji.empty:
@@ -921,21 +970,23 @@ if df_f.empty:
     st.warning("Nema podataka za izabrane filtere.")
     st.stop()
 
-uk_plan = df_f["Plan"].sum()
-uk_real = df_f["Realizacija"].sum()
-uk_zastoj = df_f["Zastoj_min"].sum()
+# Kratak zbirni prikaz po mašinama.
+# Plan za ukupno po mašini uzimamo iz Plan_dan, jer za AIDA mašine
+# dnevni plan dolazi iz "Plan per DAY STATOR", a ne iz sabiranja rotor/stator planova.
+summary = (
+    df_f.groupby(["Masina", "Projekat", "Proces"], as_index=False)
+    .agg(Plan=("Plan_dan", "max"), Realizacija=("Realizacija", "sum"), Zastoj_min=("Zastoj_min", "sum"))
+)
+summary["Realizacija_%"] = summary.apply(lambda r: procenat(r["Realizacija"], r["Plan"]), axis=1)
+
+uk_plan = summary["Plan"].sum()
+uk_real = summary["Realizacija"].sum()
+uk_zastoj = summary["Zastoj_min"].sum()
 uk_proc = procenat(uk_real, uk_plan)
 
 render_top_kpi(uk_plan, uk_real, uk_proc, uk_zastoj)
 
 st.divider()
-
-# Kratak zbirni prikaz po mašinama
-summary = (
-    df_f.groupby(["Masina", "Projekat", "Proces"], as_index=False)
-    .agg(Plan=("Plan", "sum"), Realizacija=("Realizacija", "sum"), Zastoj_min=("Zastoj_min", "sum"))
-)
-summary["Realizacija_%"] = summary.apply(lambda r: procenat(r["Realizacija"], r["Plan"]), axis=1)
 
 st.subheader("📌 Pregled po mašinama")
 render_summary_cards(summary[["Masina", "Projekat", "Proces", "Plan", "Realizacija", "Realizacija_%", "Zastoj_min"]])
@@ -970,7 +1021,7 @@ for masina in sorted(df_f["Masina"].unique()):
             "Zastoj/min": zastoj,
         })
 
-    ukupno_plan = sum(x["Plan"] for x in redovi_tabele)
+    ukupno_plan = df_m["Plan_dan"].max() if "Plan_dan" in df_m.columns else sum(x["Plan"] for x in redovi_tabele)
     ukupno_real = sum(x["Realizacija"] for x in redovi_tabele)
     ukupno_zastoj = sum(x["Zastoj/min"] for x in redovi_tabele)
     redovi_tabele.append({
