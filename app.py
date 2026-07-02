@@ -798,9 +798,9 @@ def render_smena_cards(df_tabela):
             "".join([
                 f'<div class="neo-card{total_cls}">',
                 f'<div class="neo-label">{escape(str(r["Smena"]))}</div>',
-                '<div class="neo-sub">Plan</div>',
-                f'<div class="neo-value">{format_broj(r["Plan"])}</div>',
-                f'<div class="neo-sub">Realizacija: <b>{format_broj(r["Realizacija"])}</b> · <b>{format_proc(r["Realizacija %"])}</b></div>',
+                '<div class="neo-sub">Realizacija</div>',
+                f'<div class="neo-value">{format_broj(r["Realizacija"])}</div>',
+                f'<div class="neo-sub">Plan: <b>{format_broj(r["Plan"])}</b> · <b>{format_proc(r["Realizacija %"])}</b></div>',
                 f'<div class="neo-sub">Zastoj: <b>{format_broj(r["Zastoj/min"])} min</b></div>',
                 '</div>',
             ])
@@ -822,7 +822,7 @@ def render_stop_cards(df_stop, prikazi_originalne_stavke=False):
             "".join([
                 '<div class="stop-card">',
                 f'<div class="stop-reason">{escape(str(r["Razlog"]))}</div>',
-                f'<div class="stop-meta"><b>{escape(str(r["Smena_prikaz"]))}</b> · {format_broj(r["Trajanje_min"])} min · ćelija {escape(str(r["Kolona"]))}</div>',
+                f'<div class="stop-meta"><b>{escape(str(r["Smena_prikaz"]))}</b> · {format_broj(r["Trajanje_min"])} min</div>',
                 original,
                 '</div>',
             ])
