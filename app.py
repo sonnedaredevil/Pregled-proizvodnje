@@ -1,4 +1,5 @@
 import re
+import textwrap
 from html import escape
 from io import BytesIO
 from datetime import date
@@ -773,16 +774,20 @@ def render_summary_cards(summary):
     cards = []
     for _, r in summary.sort_values("Masina").iterrows():
         cards.append(
-            f"""
-            <div class="summary-card">
-                <div class="summary-title">🏭 {escape(str(r['Masina']))}</div>
-                <div><span class="neo-pill">{escape(str(r['Projekat']))}</span><span class="neo-pill">{escape(str(r['Proces']))}</span></div>
-                <div class="neo-sub">Plan: <b>{format_broj(r['Plan'])}</b> · Realizacija: <b>{format_broj(r['Realizacija'])}</b></div>
-                <div class="neo-sub">Realizacija: <b>{format_proc(r['Realizacija_%'])}</b> · Zastoj: <b>{format_broj(r['Zastoj_min'])} min</b></div>
-            </div>
-            """
+            "".join([
+                '<div class="summary-card">',
+                f'<div class="summary-title">🏭 {escape(str(r["Masina"]))}</div>',
+                '<div class="pill-row">',
+                f'<span class="neo-pill">{escape(str(r["Projekat"]))}</span>',
+                f'<span class="neo-pill">{escape(str(r["Proces"]))}</span>',
+                '</div>',
+                f'<div class="neo-sub">Plan: <b>{format_broj(r["Plan"])}</b> · Realizacija: <b>{format_broj(r["Realizacija"])}</b></div>',
+                f'<div class="neo-sub">Realizacija: <b>{format_proc(r["Realizacija_%"])}</b> · Zastoj: <b>{format_broj(r["Zastoj_min"])} min</b></div>',
+                '</div>',
+            ])
         )
-    st.markdown('<div class="summary-grid">' + "".join(cards) + '</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="summary-grid">' + ''.join(cards) + '</div>', unsafe_allow_html=True)
 
 
 def render_smena_cards(df_tabela):
@@ -790,16 +795,17 @@ def render_smena_cards(df_tabela):
     for _, r in df_tabela.iterrows():
         total_cls = " neo-card-total" if str(r["Smena"]).upper() == "UKUPNO" else ""
         cards.append(
-            f"""
-            <div class="neo-card{total_cls}">
-                <div class="neo-label">{escape(str(r['Smena']))}</div>
-                <div class="neo-sub">Plan</div><div class="neo-value">{format_broj(r['Plan'])}</div>
-                <div class="neo-sub">Realizacija: <b>{format_broj(r['Realizacija'])}</b> · <b>{format_proc(r['Realizacija %'])}</b></div>
-                <div class="neo-sub">Zastoj: <b>{format_broj(r['Zastoj/min'])} min</b></div>
-            </div>
-            """
+            "".join([
+                f'<div class="neo-card{total_cls}">',
+                f'<div class="neo-label">{escape(str(r["Smena"]))}</div>',
+                '<div class="neo-sub">Plan</div>',
+                f'<div class="neo-value">{format_broj(r["Plan"])}</div>',
+                f'<div class="neo-sub">Realizacija: <b>{format_broj(r["Realizacija"])}</b> · <b>{format_proc(r["Realizacija %"])}</b></div>',
+                f'<div class="neo-sub">Zastoj: <b>{format_broj(r["Zastoj/min"])} min</b></div>',
+                '</div>',
+            ])
         )
-    st.markdown('<div class="neo-grid">' + "".join(cards) + '</div>', unsafe_allow_html=True)
+    st.markdown('<div class="neo-grid">' + ''.join(cards) + '</div>', unsafe_allow_html=True)
 
 
 def render_stop_cards(df_stop, prikazi_originalne_stavke=False):
@@ -811,17 +817,18 @@ def render_stop_cards(df_stop, prikazi_originalne_stavke=False):
     for _, r in df_stop.sort_values(["Smena_prikaz", "Kolona", "Razlog"]).iterrows():
         original = ""
         if prikazi_originalne_stavke:
-            original = f"<div class='stop-meta'>Original: {escape(str(r.get('Originalna_stavka', '')))}</div>"
+            original = f'<div class="stop-meta">Original: {escape(str(r.get("Originalna_stavka", "")))}</div>'
         cards.append(
-            f"""
-            <div class="stop-card">
-                <div class="stop-reason">{escape(str(r['Razlog']))}</div>
-                <div class="stop-meta"><b>{escape(str(r['Smena_prikaz']))}</b> · {format_broj(r['Trajanje_min'])} min · ćelija {escape(str(r['Kolona']))}</div>
-                {original}
-            </div>
-            """
+            "".join([
+                '<div class="stop-card">',
+                f'<div class="stop-reason">{escape(str(r["Razlog"]))}</div>',
+                f'<div class="stop-meta"><b>{escape(str(r["Smena_prikaz"]))}</b> · {format_broj(r["Trajanje_min"])} min · ćelija {escape(str(r["Kolona"]))}</div>',
+                original,
+                '</div>',
+            ])
         )
-    st.markdown('<div class="stop-grid">' + "".join(cards) + '</div>', unsafe_allow_html=True)
+    st.markdown('<div class="stop-grid">' + ''.join(cards) + '</div>', unsafe_allow_html=True)
+
 
 # ============================================================
 # UI
