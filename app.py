@@ -1,4 +1,5 @@
 import re
+from html import escape
 from io import BytesIO
 from datetime import date
 
@@ -53,6 +54,8 @@ MAPA_PROJEKATA = {
     "AIDA 3 APP350": "APP350",
     "AIDA 8 APP350": "APP350",
     "AIDA 9 APP350": "APP350",
+    "AIDA 7 APP350": "APP350",
+    "AIDA L7 APP350": "APP350",
     "DMC L2 APP350": "APP350",
     "DMC L3 APP350": "APP350",
     "DMC L4 APP350": "APP350",
@@ -96,9 +99,15 @@ MAPA_PROJEKATA = {
     "AIDA VITESKO": "VITESKO EMR4",
 
     "AIDA LK-4": "LK-4",
+    "AIDA LK4": "LK-4",
+    "AIDA LK 4": "LK-4",
     "AIDA LK-3": "LK-4",
     "DMC L1 LK-4": "LK-4",
+    "DMC L1 LK4": "LK-4",
+    "DMC L1 LK 4": "LK-4",
     "Rotor L10 LK-4": "LK-4",
+    "Rotor L10 LK4": "LK-4",
+    "Rotor L10 LK 4": "LK-4",
 }
 
 MAPA_PROCESA = {
@@ -117,7 +126,11 @@ MAPA_PROCESA = {
     "AIDA 7": "STAMPING",
     "AIDA 8 APP350": "STAMPING",
     "AIDA 9 APP350": "STAMPING",
+    "AIDA 7 APP350": "STAMPING",
+    "AIDA L7 APP350": "STAMPING",
     "AIDA LK-4": "STAMPING",
+    "AIDA LK4": "STAMPING",
+    "AIDA LK 4": "STAMPING",
     "AIDA LK-3": "STAMPING",
     "AIDA VITESKO": "STAMPING",
 
@@ -138,6 +151,8 @@ MAPA_PROCESA = {
     "DMC L3 APP350": "DMC",
     "DMC L4 APP350": "DMC",
     "DMC L1 LK-4": "DMC",
+    "DMC L1 LK4": "DMC",
+    "DMC L1 LK 4": "DMC",
     "DMC EMR4 STATOR": "DMC",
     "DMC EMR4 ROTOR": "DMC",
 
@@ -154,6 +169,8 @@ MAPA_PROCESA = {
     "Rotor L6 APP550": "ROTOR",
     "Rotor L8 APP350": "ROTOR",
     "Rotor L10 LK-4": "ROTOR",
+    "Rotor L10 LK4": "ROTOR",
+    "Rotor L10 LK 4": "ROTOR",
 }
 
 # Imena/autori notes-a koja ne smeju da postanu razlog zastoja ili NOK-a.
@@ -242,6 +259,106 @@ st.markdown(
     [data-testid="stDataFrame"] {
         background: rgba(15, 23, 42, 0.88) !important;
     }
+    .neo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin: 12px 0 18px 0;
+    }
+    .neo-card {
+        background: linear-gradient(145deg, rgba(15,23,42,0.94), rgba(2,6,23,0.96));
+        border: 1px solid rgba(56,189,248,0.24);
+        border-radius: 18px;
+        padding: 14px 16px;
+        box-shadow: 0 16px 35px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.06);
+        position: relative;
+        overflow: hidden;
+    }
+    .neo-card::before {
+        content: "";
+        position: absolute;
+        top: -40px;
+        right: -40px;
+        width: 90px;
+        height: 90px;
+        background: radial-gradient(circle, rgba(34,211,238,0.22), transparent 70%);
+    }
+    .neo-card-total {
+        border-color: rgba(34,197,94,0.45);
+        background: linear-gradient(145deg, rgba(6,78,59,0.42), rgba(2,6,23,0.96));
+    }
+    .neo-label {
+        color: #94a3b8;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        font-weight: 800;
+        margin-bottom: 6px;
+    }
+    .neo-value {
+        color: #f8fafc;
+        font-size: 24px;
+        font-weight: 900;
+        line-height: 1.05;
+    }
+    .neo-sub {
+        color: #cbd5e1;
+        font-size: 13px;
+        margin-top: 7px;
+    }
+    .neo-pill {
+        display: inline-block;
+        background: rgba(14,165,233,0.14);
+        border: 1px solid rgba(125,211,252,0.30);
+        color: #e0f2fe;
+        padding: 5px 9px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        margin: 3px 5px 3px 0;
+    }
+    .stop-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 10px;
+        margin-top: 8px;
+    }
+    .stop-card {
+        background: rgba(2,6,23,0.78);
+        border: 1px solid rgba(148,163,184,0.22);
+        border-left: 4px solid rgba(56,189,248,0.85);
+        border-radius: 14px;
+        padding: 12px 14px;
+    }
+    .stop-reason {
+        color: #ffffff;
+        font-size: 16px;
+        font-weight: 850;
+        margin-bottom: 7px;
+    }
+    .stop-meta {
+        color: #cbd5e1;
+        font-size: 13px;
+    }
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 12px;
+        margin: 10px 0 18px 0;
+    }
+    .summary-card {
+        background: linear-gradient(145deg, rgba(15,23,42,0.93), rgba(2,6,23,0.97));
+        border: 1px solid rgba(148,163,184,0.25);
+        border-radius: 18px;
+        padding: 14px;
+        box-shadow: 0 12px 28px rgba(0,0,0,0.24);
+    }
+    .summary-title {
+        color: #f8fafc;
+        font-size: 18px;
+        font-weight: 900;
+        margin-bottom: 6px;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -294,25 +411,74 @@ def procenat(deo, ukupno):
     return deo / ukupno * 100
 
 
+def kljuc_masine(naziv):
+    """Normalizuje naziv taba/mašine da LK4, LK-4 i LK 4 budu isto."""
+    t = str(naziv or "").upper().strip()
+    t = t.replace("Č", "C").replace("Ć", "C").replace("Š", "S").replace("Ž", "Z").replace("Đ", "DJ")
+    t = re.sub(r"\s+", " ", t)
+    t = re.sub(r"LK\s*-?\s*([34])", r"LK\1", t)
+    t = re.sub(r"L\s*-?\s*(\d+)", r"L\1", t)
+    t = t.replace("-", "")
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
+
+
 def pronadji_u_mapi(naziv, mapa, default="NEMAPIRANO"):
     if naziv is None:
         return default
+
     naziv_cist = str(naziv).strip()
     if naziv_cist in mapa:
         return mapa[naziv_cist]
-    naziv_upper = naziv_cist.upper()
+
+    trazeni = kljuc_masine(naziv_cist)
     for kljuc, vrednost in mapa.items():
-        if kljuc.upper() == naziv_upper:
+        if kljuc_masine(kljuc) == trazeni:
             return vrednost
+
     return default
 
 
 def projekat_iz_masine(masina):
-    return pronadji_u_mapi(masina, MAPA_PROJEKATA)
+    projekat = pronadji_u_mapi(masina, MAPA_PROJEKATA)
+    if projekat != "NEMAPIRANO":
+        return projekat
+
+    t = kljuc_masine(masina)
+
+    if "APP350" in t:
+        return "APP350"
+    if "APP550" in t:
+        return "APP550"
+    if "LK4" in t or "LK3" in t:
+        return "LK-4"
+    if "EMR4" in t or "VITESCO" in t or "VITESKO" in t:
+        return "VITESKO EMR4"
+    if t.startswith("STATOR") or "APP550" in t:
+        return "APP550"
+
+    return "OSTALO"
 
 
 def proces_iz_masine(masina):
-    return pronadji_u_mapi(masina, MAPA_PROCESA)
+    proces = pronadji_u_mapi(masina, MAPA_PROCESA)
+    if proces != "NEMAPIRANO":
+        return proces
+
+    t = kljuc_masine(masina)
+
+    if t.startswith("AIDA"):
+        return "STAMPING"
+    if t.startswith("ROTOR"):
+        return "ROTOR"
+    if t.startswith("STATOR") or t.startswith("HEATING"):
+        return "WELDING"
+    if t.startswith("DMC") and "GP12" in t:
+        return "GP12"
+    if t.startswith("DMC"):
+        return "DMC"
+
+    return "OSTALO"
 
 
 def finalno_ocisti_razlog_od_imena(vrednost):
@@ -580,6 +746,83 @@ def ucitaj_excel(upload_bytes):
 
     return df, df_zastoji
 
+
+# ============================================================
+# MODERNI HTML PRIKAZI
+# ============================================================
+
+def render_top_kpi(plan, realizacija, proc, zastoj):
+    st.markdown(
+        f"""
+        <div class="neo-grid">
+            <div class="neo-card"><div class="neo-label">Ukupan plan</div><div class="neo-value">{format_broj(plan)}</div></div>
+            <div class="neo-card"><div class="neo-label">Ukupna realizacija</div><div class="neo-value">{format_broj(realizacija)}</div></div>
+            <div class="neo-card"><div class="neo-label">Realizacija</div><div class="neo-value">{format_proc(proc)}</div></div>
+            <div class="neo-card"><div class="neo-label">Ukupan zastoj</div><div class="neo-value">{format_broj(zastoj)} min</div></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_summary_cards(summary):
+    if summary is None or summary.empty:
+        st.info("Nema zbirnih podataka za prikaz.")
+        return
+
+    cards = []
+    for _, r in summary.sort_values("Masina").iterrows():
+        cards.append(
+            f"""
+            <div class="summary-card">
+                <div class="summary-title">🏭 {escape(str(r['Masina']))}</div>
+                <div><span class="neo-pill">{escape(str(r['Projekat']))}</span><span class="neo-pill">{escape(str(r['Proces']))}</span></div>
+                <div class="neo-sub">Plan: <b>{format_broj(r['Plan'])}</b> · Realizacija: <b>{format_broj(r['Realizacija'])}</b></div>
+                <div class="neo-sub">Realizacija: <b>{format_proc(r['Realizacija_%'])}</b> · Zastoj: <b>{format_broj(r['Zastoj_min'])} min</b></div>
+            </div>
+            """
+        )
+    st.markdown('<div class="summary-grid">' + "".join(cards) + '</div>', unsafe_allow_html=True)
+
+
+def render_smena_cards(df_tabela):
+    cards = []
+    for _, r in df_tabela.iterrows():
+        total_cls = " neo-card-total" if str(r["Smena"]).upper() == "UKUPNO" else ""
+        cards.append(
+            f"""
+            <div class="neo-card{total_cls}">
+                <div class="neo-label">{escape(str(r['Smena']))}</div>
+                <div class="neo-sub">Plan</div><div class="neo-value">{format_broj(r['Plan'])}</div>
+                <div class="neo-sub">Realizacija: <b>{format_broj(r['Realizacija'])}</b> · <b>{format_proc(r['Realizacija %'])}</b></div>
+                <div class="neo-sub">Zastoj: <b>{format_broj(r['Zastoj/min'])} min</b></div>
+            </div>
+            """
+        )
+    st.markdown('<div class="neo-grid">' + "".join(cards) + '</div>', unsafe_allow_html=True)
+
+
+def render_stop_cards(df_stop, prikazi_originalne_stavke=False):
+    if df_stop is None or df_stop.empty:
+        st.info("Nema pročitanih razloga zastoja iz notes-a za ovu mašinu i datum.")
+        return
+
+    cards = []
+    for _, r in df_stop.sort_values(["Smena_prikaz", "Kolona", "Razlog"]).iterrows():
+        original = ""
+        if prikazi_originalne_stavke:
+            original = f"<div class='stop-meta'>Original: {escape(str(r.get('Originalna_stavka', '')))}</div>"
+        cards.append(
+            f"""
+            <div class="stop-card">
+                <div class="stop-reason">{escape(str(r['Razlog']))}</div>
+                <div class="stop-meta"><b>{escape(str(r['Smena_prikaz']))}</b> · {format_broj(r['Trajanje_min'])} min · ćelija {escape(str(r['Kolona']))}</div>
+                {original}
+            </div>
+            """
+        )
+    st.markdown('<div class="stop-grid">' + "".join(cards) + '</div>', unsafe_allow_html=True)
+
 # ============================================================
 # UI
 # ============================================================
@@ -676,11 +919,7 @@ uk_real = df_f["Realizacija"].sum()
 uk_zastoj = df_f["Zastoj_min"].sum()
 uk_proc = procenat(uk_real, uk_plan)
 
-k1, k2, k3, k4 = st.columns(4)
-k1.metric("Ukupan plan", format_broj(uk_plan))
-k2.metric("Ukupna realizacija", format_broj(uk_real))
-k3.metric("Realizacija %", format_proc(uk_proc))
-k4.metric("Ukupan zastoj/min", format_broj(uk_zastoj))
+render_top_kpi(uk_plan, uk_real, uk_proc, uk_zastoj)
 
 st.divider()
 
@@ -692,17 +931,7 @@ summary = (
 summary["Realizacija_%"] = summary.apply(lambda r: procenat(r["Realizacija"], r["Plan"]), axis=1)
 
 st.subheader("📌 Pregled po mašinama")
-st.dataframe(
-    summary[["Masina", "Projekat", "Proces", "Plan", "Realizacija", "Realizacija_%", "Zastoj_min"]],
-    use_container_width=True,
-    hide_index=True,
-    column_config={
-        "Plan": st.column_config.NumberColumn("Plan", format="%.0f"),
-        "Realizacija": st.column_config.NumberColumn("Realizacija", format="%.0f"),
-        "Realizacija_%": st.column_config.NumberColumn("Realizacija %", format="%.1f%%"),
-        "Zastoj_min": st.column_config.NumberColumn("Zastoj/min", format="%.0f"),
-    },
-)
+render_summary_cards(summary[["Masina", "Projekat", "Proces", "Plan", "Realizacija", "Realizacija_%", "Zastoj_min"]])
 
 # Detalji po mašinama
 for masina in sorted(df_f["Masina"].unique()):
@@ -746,37 +975,11 @@ for masina in sorted(df_f["Masina"].unique()):
     })
 
     df_tabela = pd.DataFrame(redovi_tabele)
-    st.dataframe(
-        df_tabela,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Plan": st.column_config.NumberColumn("Plan", format="%.0f"),
-            "Realizacija": st.column_config.NumberColumn("Realizacija", format="%.0f"),
-            "Realizacija %": st.column_config.NumberColumn("Realizacija %", format="%.1f%%"),
-            "Zastoj/min": st.column_config.NumberColumn("Zastoj/min", format="%.0f"),
-        },
-    )
+    render_smena_cards(df_tabela)
 
     st.markdown('<div class="mini-title">⏱️ Razlozi zastoja iz notes-a</div>', unsafe_allow_html=True)
     df_z_m = df_z_f[df_z_f["Masina"] == masina].copy() if not df_z_f.empty else pd.DataFrame()
 
-    if df_z_m.empty:
-        st.info("Nema pročitanih razloga zastoja iz notes-a za ovu mašinu i datum.")
-    else:
-        kolone = ["Smena_prikaz", "Razlog", "Trajanje_min", "Kolona"]
-        if prikazi_originalne_stavke:
-            kolone.append("Originalna_stavka")
-        prikaz = df_z_m[kolone].rename(columns={
-            "Smena_prikaz": "Smena",
-            "Trajanje_min": "Trajanje/min",
-            "Originalna_stavka": "Originalna stavka",
-        })
-        st.dataframe(
-            prikaz,
-            use_container_width=True,
-            hide_index=True,
-            column_config={"Trajanje/min": st.column_config.NumberColumn("Trajanje/min", format="%.0f")},
-        )
+    render_stop_cards(df_z_m, prikazi_originalne_stavke=prikazi_originalne_stavke)
 
     st.markdown('</div>', unsafe_allow_html=True)
