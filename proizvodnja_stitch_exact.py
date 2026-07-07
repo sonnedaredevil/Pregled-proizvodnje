@@ -459,13 +459,10 @@ preskoci_tabove = [
     "Annealing"
 ]
 
-iskljuci_iz_ukupnog_proracuna = [
-    "AIDA VITESKO",
-    "HEATING VITESCO STATOR",
-    "HEATING VITESCO ROTOR",
-    "DMC EMR4 STATOR",
-    "DMC EMR4 ROTOR",
-]
+# Sve VITESKO/EMR4 mašine ponovo učestvuju u ukupnim prikazima i KPI proračunima.
+# AIDA VITESKO (STAMPING) se pre sabiranja pretvara iz lamela u gotove komade:
+# 602 lamele = 1 stator, 77 lamela = 1 rotor.
+iskljuci_iz_ukupnog_proracuna = []
 
 dmc_stator_iz_smena_tabovi = [
     "DMC L1 APP550",
