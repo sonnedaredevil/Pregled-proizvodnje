@@ -104,7 +104,7 @@ st.set_page_config(
 
 st.markdown(
     """
-    <div class="creator-signature">Kreirao: Nebojša Đakovački</div>
+    <div class="creator-signature">Kreirao: Nebojša Đakovački · v12</div>
     <style>
     .creator-signature {
         position: fixed;
@@ -3667,6 +3667,31 @@ if izabrani_procesi:
 if izabrane_masine:
     df_filter = df_filter[df_filter["Masina"].isin(izabrane_masine)]
 
+# TVRDA ZAVRŠNA KONVERZIJA ZA AIDA VITESKO / STAMPING.
+# Ne zavisi od pomoćnih raw kolona niti od Streamlit keša. Ako je u
+# realizaciji ostao broj lamela, neposredno pre svih kartica i grafikona
+# pretvara se u gotove komade. Već pretvorene male vrednosti se ne dele ponovo.
+_vitesko_stamping_filter = (
+    df_filter["Projekat"].astype(str).str.upper().eq("VITESKO EMR4")
+    & df_filter["Proces"].astype(str).str.upper().eq("STAMPING")
+)
+if _vitesko_stamping_filter.any():
+    _vs = pd.to_numeric(df_filter.loc[_vitesko_stamping_filter, "Realizacija_STATOR"], errors="coerce").fillna(0)
+    _vr = pd.to_numeric(df_filter.loc[_vitesko_stamping_filter, "Realizacija_ROTOR"], errors="coerce").fillna(0)
+
+    _vs_lamele = _vs > 5000
+    _vr_lamele = _vr > 5000
+
+    if _vs_lamele.any():
+        _idx = _vs.index[_vs_lamele]
+        df_filter.loc[_idx, "Realizacija_STATOR"] = _vs.loc[_idx].div(602).apply(zaokruzi_na_najblizi_ceo)
+    if _vr_lamele.any():
+        _idx = _vr.index[_vr_lamele]
+        df_filter.loc[_idx, "Realizacija_ROTOR"] = _vr.loc[_idx].div(77).apply(zaokruzi_na_najblizi_ceo)
+
+    df_filter.loc[_vitesko_stamping_filter, "OK_STATOR"] = df_filter.loc[_vitesko_stamping_filter, "Realizacija_STATOR"]
+    df_filter.loc[_vitesko_stamping_filter, "OK_ROTOR"] = df_filter.loc[_vitesko_stamping_filter, "Realizacija_ROTOR"]
+
 df_ukupno_filter = df_filter[~df_filter["Masina"].isin(iskljuci_iz_ukupnog_proracuna)].copy()
 
 # Poslednja zaštita neposredno pre kartica i grafikona.
@@ -4021,10 +4046,30 @@ if aktivna_sekcija == "Dnevni pregled":
     with c4:
         prikazi_metric_card("NOK ROTOR", _fmt_num(_safe_sum(df_ukupno_filter, "NOK_ROTOR")), "svi procesi", "neo-card-purple")
 
-    if not df_filter.empty:
-        prikaz = df_filter.groupby(["Projekat", "Proces"], as_index=False).agg({
+    if not df_ukupno_filter.empty:
+        prikaz = df_ukupno_filter.groupby(["Projekat", "Proces"], as_index=False).agg({
             "Realizacija_STATOR": "sum", "Realizacija_ROTOR": "sum", "OK_STATOR": "sum", "OK_ROTOR": "sum", "NOK_STATOR": "sum", "NOK_ROTOR": "sum", "Stops_min": "sum"
         })
+
+        # Poslednja apsolutna zaštita na već grupisanim podacima.
+        # Ako bi iz bilo kog razloga u grupu ipak stigle lamele, grafikon
+        # ih ovde pretvara u komade pre računanja ukupne realizacije.
+        _pg = (
+            prikaz["Projekat"].astype(str).str.upper().eq("VITESKO EMR4")
+            & prikaz["Proces"].astype(str).str.upper().eq("STAMPING")
+        )
+        if _pg.any():
+            _pgs = pd.to_numeric(prikaz.loc[_pg, "Realizacija_STATOR"], errors="coerce").fillna(0)
+            _pgr = pd.to_numeric(prikaz.loc[_pg, "Realizacija_ROTOR"], errors="coerce").fillna(0)
+            _idxs = _pgs.index[_pgs > 5000]
+            _idxr = _pgr.index[_pgr > 5000]
+            if len(_idxs):
+                prikaz.loc[_idxs, "Realizacija_STATOR"] = _pgs.loc[_idxs].div(602).apply(zaokruzi_na_najblizi_ceo)
+            if len(_idxr):
+                prikaz.loc[_idxr, "Realizacija_ROTOR"] = _pgr.loc[_idxr].div(77).apply(zaokruzi_na_najblizi_ceo)
+            prikaz.loc[_pg, "OK_STATOR"] = prikaz.loc[_pg, "Realizacija_STATOR"]
+            prikaz.loc[_pg, "OK_ROTOR"] = prikaz.loc[_pg, "Realizacija_ROTOR"]
+
         prikaz["Realizacija"] = prikaz["Realizacija_STATOR"] + prikaz["Realizacija_ROTOR"]
         fig = go.Figure(go.Bar(x=prikaz["Proces"], y=prikaz["Realizacija"], text=prikaz["Realizacija"].apply(lambda x: f"{x:,.0f}".replace(",", ".")), textposition="outside"))
         st.plotly_chart(_dark_fig(fig, "Realizacija po procesu"), use_container_width=True, config={"displayModeBar": False})
