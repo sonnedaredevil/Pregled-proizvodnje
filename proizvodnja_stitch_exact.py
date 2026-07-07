@@ -2111,6 +2111,12 @@ def ucitaj_sve_podatke(original_fajl):
                 zapis["Realizacija_STATOR"] = zaokruzi_na_najblizi_ceo(stator_lamele / 602)
                 zapis["Realizacija_ROTOR"] = zaokruzi_na_najblizi_ceo(rotor_lamele / 77)
 
+                # Na STAMPING procesu nema posebnih OK kolona za VITESKO.
+                # Zato se preračunati gotovi komadi koriste i za OK kartice.
+                zapis["OK_STATOR"] = zapis["Realizacija_STATOR"]
+                zapis["OK_ROTOR"] = zapis["Realizacija_ROTOR"]
+                zapis["VITESKO_STAMPING_PRETVORENO"] = 1
+
             ok_stator = broj(zapis.get("OK_STATOR"))
             nok_stator = broj(zapis.get("NOK_STATOR"))
             ok_rotor = broj(zapis.get("OK_ROTOR"))
@@ -3400,6 +3406,37 @@ if df.empty:
 # Projekat/proces + eliminacija teksta NEMAPIRANO iz prikaza.
 df["Projekat"] = df["Masina"].apply(projekat_iz_masine)
 df["Proces"] = df["Masina"].apply(proces_iz_masine)
+
+# Sigurnosna konverzija za slučaj da Streamlit vrati stariji keširani DataFrame
+# u kom su AIDA VITESKO vrednosti još u lamelama. Novi podaci iz loader-a nose
+# oznaku VITESKO_STAMPING_PRETVORENO=1, pa se ne dele ponovo.
+if "VITESKO_STAMPING_PRETVORENO" not in df.columns:
+    df["VITESKO_STAMPING_PRETVORENO"] = 0
+
+_mask_vitesko = (
+    df["Masina"].astype(str).str.strip().str.upper().eq("AIDA VITESKO")
+    & pd.to_numeric(df["VITESKO_STAMPING_PRETVORENO"], errors="coerce").fillna(0).eq(0)
+)
+
+if _mask_vitesko.any():
+    df.loc[_mask_vitesko, "Realizacija_STATOR"] = (
+        pd.to_numeric(df.loc[_mask_vitesko, "Realizacija_STATOR"], errors="coerce")
+        .fillna(0).div(602).round().astype(int)
+    )
+    df.loc[_mask_vitesko, "Realizacija_ROTOR"] = (
+        pd.to_numeric(df.loc[_mask_vitesko, "Realizacija_ROTOR"], errors="coerce")
+        .fillna(0).div(77).round().astype(int)
+    )
+    df.loc[_mask_vitesko, "VITESKO_STAMPING_PRETVORENO"] = 1
+
+# Za VITESKO STAMPING preračunati gotovi komadi su ujedno vrednosti za kartice.
+_mask_vitesko_svi = df["Masina"].astype(str).str.strip().str.upper().eq("AIDA VITESKO")
+df.loc[_mask_vitesko_svi, "OK_STATOR"] = pd.to_numeric(
+    df.loc[_mask_vitesko_svi, "Realizacija_STATOR"], errors="coerce"
+).fillna(0)
+df.loc[_mask_vitesko_svi, "OK_ROTOR"] = pd.to_numeric(
+    df.loc[_mask_vitesko_svi, "Realizacija_ROTOR"], errors="coerce"
+).fillna(0)
 df = obrisi_nemapirano(df)
 
 if not df_nok.empty:
@@ -3890,14 +3927,22 @@ if aktivna_sekcija == "Dnevni pregled":
     st.subheader("📌 Ukupan pregled proizvodnje")
     st.caption("Ako je izabran tačno jedan proces, realizacija prati taj proces. U ostalim slučajevima STATOR ide iz DMC, a ROTOR iz ROTOR procesa. NOK ostaje iz svih procesa.")
 
-    df_stator_gotov = df_ukupno_filter[df_ukupno_filter["Proces"] == "DMC"].copy()
-    df_rotor_gotov = df_ukupno_filter[df_ukupno_filter["Proces"] == "ROTOR"].copy()
+    df_stator_gotov, df_rotor_gotov, stator_sub, rotor_sub = _summary_realization_sources(
+        df_ukupno_filter,
+        izabrani_procesi
+    )
+
+    # Kada je izabran tačno jedan proces, kartice prikazuju realizaciju tog procesa.
+    # Ovo je neophodno za STAMPING, gde OK kolone uglavnom ne postoje.
+    jedan_proces = bool(izabrani_procesi and len(izabrani_procesi) == 1)
+    stator_kolona_kartice = "Realizacija_STATOR" if jedan_proces else "OK_STATOR"
+    rotor_kolona_kartice = "Realizacija_ROTOR" if jedan_proces else "OK_ROTOR"
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        prikazi_metric_card("OK STATOR", _fmt_num(_safe_sum(df_stator_gotov, "OK_STATOR")), "DMC finalni proces")
+        prikazi_metric_card("OK STATOR", _fmt_num(_safe_sum(df_stator_gotov, stator_kolona_kartice)), stator_sub)
     with c2:
-        prikazi_metric_card("OK ROTOR", _fmt_num(_safe_sum(df_rotor_gotov, "OK_ROTOR")), "ROTOR finalni proces", "neo-card-green")
+        prikazi_metric_card("OK ROTOR", _fmt_num(_safe_sum(df_rotor_gotov, rotor_kolona_kartice)), rotor_sub, "neo-card-green")
     with c3:
         prikazi_metric_card("NOK STATOR", _fmt_num(_safe_sum(df_ukupno_filter, "NOK_STATOR")), "svi procesi", "neo-card-orange")
     with c4:
