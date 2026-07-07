@@ -859,6 +859,12 @@ def zaokruzi_na_najblizi_ceo(vrednost):
     return int(vrednost + 0.5)
 
 
+def da_li_je_aida_vitesko(vrednost):
+    """Prepoznaje AIDA VITESKO/VITESCO bez obzira na razmake, crtice i pravopis."""
+    t = pojednostavi_naziv_za_mapiranje(vrednost)
+    return t.startswith("aida") and ("vitesko" in t or "vitesco" in t)
+
+
 def procenat(deo, ukupno):
     if ukupno is None or ukupno == 0:
         return None
@@ -1908,7 +1914,7 @@ def ucitaj_sve_podatke(original_fajl):
             # kolona G sadrži broj izrađenih statorskih lamela.
             # Pretvaranje lamela u komade statora/rotora radi se niže,
             # nakon što se učitaju i eventualne rotorske kolone.
-            if naziv_taba.upper() == "AIDA VITESKO":
+            if da_li_je_aida_vitesko(naziv_taba):
                 zapis["Plan_STATOR"] = 0
                 zapis["Plan_ROTOR"] = 0
                 zapis["Realizacija_STATOR"] = broj(ws.cell(row=red, column=7).value)
@@ -2104,7 +2110,7 @@ def ucitaj_sve_podatke(original_fajl):
             # VITESKO / STAMPING u Excelu vodi realizaciju kao broj lamela.
             # Za prikaz gotovih komada: 602 lamele = 1 stator, 77 lamela = 1 rotor.
             # Rezultat se zaokružuje na najbliži ceo broj.
-            if naziv_taba.upper() == "AIDA VITESKO":
+            if da_li_je_aida_vitesko(naziv_taba):
                 stator_lamele = broj(zapis.get("Realizacija_STATOR"))
                 rotor_lamele = broj(zapis.get("Realizacija_ROTOR"))
 
@@ -3213,14 +3219,28 @@ def _safe_sum(df_obj, col):
 
 def _summary_realization_sources(df_obj, selected_processes):
     """Za gornje KPI kartice:
-    - ako je izabran tačno jedan proces, i stator i rotor realizacija se prikazuju za taj proces
+    - ako je izabran tačno jedan proces, prikazuje taj proces
+    - ako filter formalno sadrži više procesa, ali filtrirani podaci imaju samo jedan,
+      prikazuje taj jedini stvarno prisutan proces
     - inače stator ide iz DMC, a rotor iz ROTOR (finalni procesi)
     """
     if df_obj is None or df_obj.empty:
-        return pd.DataFrame(), pd.DataFrame(), "DMC finalni proces", "ROTOR finalni proces"
+        return pd.DataFrame(), pd.DataFrame(), "Nema podataka", "Nema podataka"
+
+    efektivni_procesi = []
+    if "Proces" in df_obj.columns:
+        efektivni_procesi = [
+            p for p in df_obj["Proces"].dropna().astype(str).unique().tolist()
+            if p and p != "NEMAPIRANO"
+        ]
 
     if selected_processes and len(selected_processes) == 1:
         proc = selected_processes[0]
+        filt = df_obj[df_obj["Proces"] == proc].copy()
+        return filt, filt, f"{proc} proces", f"{proc} proces"
+
+    if len(efektivni_procesi) == 1:
+        proc = efektivni_procesi[0]
         filt = df_obj[df_obj["Proces"] == proc].copy()
         return filt, filt, f"{proc} proces", f"{proc} proces"
 
@@ -3413,8 +3433,9 @@ df["Proces"] = df["Masina"].apply(proces_iz_masine)
 if "VITESKO_STAMPING_PRETVORENO" not in df.columns:
     df["VITESKO_STAMPING_PRETVORENO"] = 0
 
+_mask_vitesko_naziv = df["Masina"].apply(da_li_je_aida_vitesko)
 _mask_vitesko = (
-    df["Masina"].astype(str).str.strip().str.upper().eq("AIDA VITESKO")
+    _mask_vitesko_naziv
     & pd.to_numeric(df["VITESKO_STAMPING_PRETVORENO"], errors="coerce").fillna(0).eq(0)
 )
 
@@ -3430,7 +3451,7 @@ if _mask_vitesko.any():
     df.loc[_mask_vitesko, "VITESKO_STAMPING_PRETVORENO"] = 1
 
 # Za VITESKO STAMPING preračunati gotovi komadi su ujedno vrednosti za kartice.
-_mask_vitesko_svi = df["Masina"].astype(str).str.strip().str.upper().eq("AIDA VITESKO")
+_mask_vitesko_svi = df["Masina"].apply(da_li_je_aida_vitesko)
 df.loc[_mask_vitesko_svi, "OK_STATOR"] = pd.to_numeric(
     df.loc[_mask_vitesko_svi, "Realizacija_STATOR"], errors="coerce"
 ).fillna(0)
@@ -3934,7 +3955,14 @@ if aktivna_sekcija == "Dnevni pregled":
 
     # Kada je izabran tačno jedan proces, kartice prikazuju realizaciju tog procesa.
     # Ovo je neophodno za STAMPING, gde OK kolone uglavnom ne postoje.
-    jedan_proces = bool(izabrani_procesi and len(izabrani_procesi) == 1)
+    efektivni_procesi_kartice = [] if df_ukupno_filter.empty else [
+        p for p in df_ukupno_filter["Proces"].dropna().astype(str).unique().tolist()
+        if p and p != "NEMAPIRANO"
+    ]
+    jedan_proces = (
+        bool(izabrani_procesi and len(izabrani_procesi) == 1)
+        or len(efektivni_procesi_kartice) == 1
+    )
     stator_kolona_kartice = "Realizacija_STATOR" if jedan_proces else "OK_STATOR"
     rotor_kolona_kartice = "Realizacija_ROTOR" if jedan_proces else "OK_ROTOR"
 
